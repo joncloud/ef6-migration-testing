@@ -32,6 +32,22 @@ namespace ClassLibrary1.Migrations
             RenameColumn("dbo.Students", "Id", "TempId");
             AddColumn("dbo.Students", "Id", c => c.Int(nullable: false));
             Sql(@"
+                CREATE TABLE OverflowIdStudents(
+                    Name nvarchar(24)
+                );
+
+                INSERT INTO OverflowIdStudents
+                    (Name)
+                    SELECT s.Name
+                    FROM dbo.Students s
+                    WHERE CONVERT(nvarchar(36), s.Id) NOT LIKE '%-0000-0000-0000-000000000000';
+
+                DELETE s
+                FROM dbo.Students s
+                WHERE CONVERT(nvarchar(36), s.Id) NOT LIKE '%-0000-0000-0000-000000000000'
+            ");
+
+            Sql(@"
                 UPDATE s
                 SET s.Id = CAST(
                     CONVERT(
@@ -41,9 +57,17 @@ namespace ClassLibrary1.Migrations
                 )
                 FROM dbo.Students s
             ");
+
             DropColumn("dbo.Students", "TempId");
             AlterColumn("dbo.Students", "Id", c => c.Int(nullable: false, identity: true));
             AddPrimaryKey("dbo.Students", "Id");
+
+            Sql(@"
+                INSERT INTO dbo.Students (Name)
+                    SELECT s.Name FROM OverflowIdStudents s;
+
+                DROP TABLE OverflowIdStudents;
+            ");
         }
     }
 }
